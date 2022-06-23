@@ -2,23 +2,24 @@ import {useEffect, useState} from "react";
 import {ListItemText, Grid, ListItemButton} from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
 
-const MovieItem: function = ({
-                                 movieItemData: {genres, id, name, releaseDate, score, crew},
-                                 setWikiSearchData,
-                                 setOpen
-                             }) => {
+const MovieItem: function = (
+    {
+        movieItemData: {genres, id, name, releaseDate, score, crew},
+        setWikiSearchData,
+        setOpen
+    }) => {
     const [year, setYear] = useState(null);
     const [genreString, setGenreString] = useState(null);
     const [director, setDirector] = useState(null);
 
     const handleClick: function = () => {
+        setOpen(true);
         setWikiSearchData({
             id: id,
             name: name,
             year: year,
             director: director
         });
-        setOpen(true);
     };
 
     useEffect(() => {
@@ -30,9 +31,8 @@ const MovieItem: function = ({
     }, [genres]);
 
     useEffect(() => {
-        if (!crew?.length) return;
-        const director = crew.find(({role: {job}} = {}) => job === "Director");
-        setDirector(director?.person?.name);
+        const {person: {name} = {}} = !!crew?.length && (crew.find(({role: {job}}) => job === "Director") ?? {});
+        setDirector(name);
     }, [crew]);
 
     return (
@@ -45,9 +45,7 @@ const MovieItem: function = ({
                             <StarIcon fontSize="small"/>
                             {score}
                         </Grid>
-                        <Grid item component="span">
-                            {genreString}
-                        </Grid>
+                        <Grid item component="span">{genreString}</Grid>
                     </Grid>
                 }
             />

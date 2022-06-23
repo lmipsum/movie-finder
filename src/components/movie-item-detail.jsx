@@ -1,10 +1,3 @@
-/**
- * @param data - received wikipedia data
- * @param data.extract - text content of received wikipedia data
- * @param data.pageid - page id of received wikipedia data
- * @param data.extlinks - imdb link of received wikipedia data
- */
-
 import {forwardRef, useEffect, useState, ReactElement, Ref} from "react";
 import {
     CircularProgress,
@@ -21,8 +14,6 @@ import {
 import axios from "axios";
 import CloseIcon from '@mui/icons-material/Close';
 import {TransitionProps} from "@mui/material/transitions";
-
-const getValueOfKey = items => Object.keys(items).map((key) => items[key]);
 
 const Transition = forwardRef(
     (
@@ -54,24 +45,28 @@ export const {params} = {
 
 const fetchWikipedia = async (name, year, director = '', params, url) => {
     const gsrSearchParam = `gsrsearch=${encodeURIComponent(name)} (${year} film) ${encodeURIComponent(director)}`;
-    return await axios.get(
-        url + "?" + gsrSearchParam,
-        {params}
-    );
+    return await axios.get(url + "?" + gsrSearchParam, {params});
 };
 
 const pageFilter: function = (data = {}, name) => {
     const pages = data?.query?.pages || {};
-    const contentFilter = new RegExp(name.replaceAll(/\s?[&:]\s?/ig,'|'));
-    const sortedByRelevance = getValueOfKey(pages).sort((a, b) => a.index - b.index);
-    return sortedByRelevance.find(
-        ({templates, extract} = {}) => !!templates && contentFilter.test(extract)
-    );
+    const contentFilter = new RegExp(name.replaceAll(/\s?[&:]\s?/ig, '|'));
+    return Object.keys(pages)
+        .map((key) => pages[key])
+        .sort((a, b) => a.index - b.index)
+        .find(({templates, extract}) => !!templates && contentFilter.test(extract));
 }
 
-const MovieItemDetail: function = ({wikiSearchData: {id, name, year, director}, open, setOpen, setMovieSearchData}) => {
+const MovieItemDetail: function = (
+    {
+        wikiSearchData: {id, name, year, director},
+        open,
+        setOpen,
+        setMovieSearchData
+    }) => {
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState(null);
+    const [data, setData] = useState({});
+    const {pageid = 0, extlinks = [], extract = ''} = data;
 
     const handleClose: function = () => setOpen(false);
 
@@ -86,9 +81,8 @@ const MovieItemDetail: function = ({wikiSearchData: {id, name, year, director}, 
     useEffect(() => {
         if (!name) return;
         setLoading(true);
-        fetchWikipedia(name, year, director, params, REST_URL).then(
-            response => setData(pageFilter(response?.data, name) ?? name)
-        )
+        fetchWikipedia(name, year, director, params, REST_URL)
+            .then(response => setData(pageFilter(response?.data, name) ?? name))
     }, [director, name, year]);
 
     useEffect(() => {
@@ -109,7 +103,7 @@ const MovieItemDetail: function = ({wikiSearchData: {id, name, year, director}, 
             PaperProps={{sx: {boxShadow: "none", borderWidth: "1px", borderStyle: "solid"}}}
             TransitionComponent={Transition}
         >
-            <DialogTitle>
+            <DialogTitle id={id?.toString()}>
                 {name}
                 <IconButton aria-label="close" onClick={handleClose} sx={{position: 'absolute', right: 8, top: 8}}>
                     <CloseIcon/>
@@ -117,23 +111,14 @@ const MovieItemDetail: function = ({wikiSearchData: {id, name, year, director}, 
             </DialogTitle>
             <DialogContent dividers>
                 <DialogContentText id={`${id}-description`} align="justify">
-                    {!data?.extract ?
-                        'Cannot find page for "' + name + '" on Wikipedia.'
-                        : (data?.extract).split('\n')[0]}
+                    {!!pageid ? (extract).split('\n')[0] : 'Cannot find page for "' + name + '" on Wikipedia.'}
                 </DialogContentText>
             </DialogContent>
-            {!!data?.extract &&
+            {!!pageid &&
                 <DialogActions>
-                    <Button
-                        href={`https://en.wikipedia.org/?curid=${data?.pageid}`}
-                        target="_blank">WIKIPEDIA</Button>
-                    {!!data?.extlinks &&
-                        <Button
-                            href={getValueOfKey(data?.extlinks[0]).toString()}
-                            target="_blank">IMDB</Button>
-                    }
-                    <Button data-testid={`movieSearch-${id}`}
-                            onClick={handleClick}>RELATED</Button>
+                    <Button href={`https://en.wikipedia.org/?curid=${pageid}`} target="_blank">WIKIPEDIA</Button>
+                    {!!extlinks && <Button href={extlinks[0]['*']} target="_blank">IMDB</Button>}
+                    <Button onClick={handleClick} data-testid={`movieSearch-${id}`}>RELATED</Button>
                 </DialogActions>
             }
         </Dialog>

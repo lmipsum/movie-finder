@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState, Fragment} from "react";
+import {useEffect, useState, Fragment} from "react";
 import {useQuery} from "react-query";
 import {gql, request} from "graphql-request";
 import {CircularProgress, Backdrop, Grid, List, Typography} from "@mui/material";
@@ -6,8 +6,8 @@ import {CircularProgress, Backdrop, Grid, List, Typography} from "@mui/material"
 import MovieItem from "./movie-item";
 
 const GQL_URL = 'https://tmdb.sandbox.zoosh.ie/dev/graphql';
-const {GQL_UNRELATED, GQL_RELATED} = {
-    GQL_UNRELATED: gql`
+const {QUERY_UNRELATED, QUERY_RELATED} = {
+    QUERY_UNRELATED: gql`
         query SearchMovies($needle: String!) {
             searchMovies(query: $needle) {
                 id,name,releaseDate,genres{name},score,runtime,crew(limit: 5) {
@@ -16,10 +16,10 @@ const {GQL_UNRELATED, GQL_RELATED} = {
             }
         }
     `,
-    GQL_RELATED: gql`
+    QUERY_RELATED: gql`
         query getMovie($needle: ID!) {
             movie(id: $needle) {
-                id,recommended {id,name,releaseDate,genres{name},score,runtime,crew(limit: 5) {
+                recommended {id,name,releaseDate,genres{name},score,runtime,crew(limit: 5) {
                         person{name},role{... on Crew {job}}
                     }
                 }
@@ -38,23 +38,19 @@ const messageSelect: function = ((items, {needle, relatedTo}) => {
     return `${message} to "${relatedTo ?? needle}"`;
 });
 
-const MovieList: function = ({movieSearchData: {needle, relatedTo}, setWikiSearchData, setOpen}) => {
-    let query = useRef(GQL_UNRELATED);
+const MovieList: function = (
+    {
+        movieSearchData: {needle, relatedTo},
+        setWikiSearchData,
+        setOpen
+    }) => {
     const [message, setMessage] = useState(null);
     const [movieItems, setMovieItems] = useState(null);
 
-    useEffect(() => {
-        query.current = !!relatedTo ? GQL_RELATED : GQL_UNRELATED;
-    }, [relatedTo]);
-
     const {data, status} = useQuery(
         [needle],
-        () => {
-            return request(GQL_URL, query.current, {needle})
-        },
-        {
-            enabled: !!needle
-        }
+        () => request(GQL_URL, (!relatedTo ? QUERY_UNRELATED : QUERY_RELATED), {needle}),
+        {enabled: !!needle}
     );
 
     useEffect(() => {
@@ -62,9 +58,7 @@ const MovieList: function = ({movieSearchData: {needle, relatedTo}, setWikiSearc
     }, [data]);
 
     useEffect(() => {
-        setMessage(
-            messageSelect(movieItems, {needle, relatedTo})
-        );
+        setMessage(messageSelect(movieItems, {needle, relatedTo}));
     }, [movieItems, needle, relatedTo]);
 
     if (status === "loading") return <Backdrop open={true}> <CircularProgress/></Backdrop>;
@@ -80,8 +74,10 @@ const MovieList: function = ({movieSearchData: {needle, relatedTo}, setWikiSearc
                 <List sx={{width: '100%'}} component="div">
                     {movieItems.map(movieItemData =>
                         <Fragment key={movieItemData.id}>
-                            <MovieItem movieItemData={movieItemData} setWikiSearchData={setWikiSearchData}
-                                       setOpen={setOpen}/>
+                            <MovieItem movieItemData={movieItemData}
+                                       setWikiSearchData={setWikiSearchData}
+                                       setOpen={setOpen}
+                            />
                         </Fragment>
                     )}
                 </List>

@@ -1,6 +1,7 @@
 import {unmountComponentAtNode} from "react-dom";
 import {QueryClientProvider, QueryClient} from "react-query";
 import {render, screen} from "@testing-library/react";
+import * as React from 'react'
 
 import MovieList from "./movie-list";
 
@@ -19,11 +20,15 @@ const createTestQueryClient = () => new QueryClient({
 })
 
 const renderWithClient = (ui) => {
-    const testQueryClient = createTestQueryClient()
-    const {...result} = render(
+    const testQueryClient = createTestQueryClient();
+    const {rerender, ...result} = render(
         <QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>
     )
-    return {...result}
+    return {
+        ...result, rerender: (rerenderUi) => rerender(
+            <QueryClientProvider client={testQueryClient}>{rerenderUi}</QueryClientProvider>
+        ),
+    }
 };
 
 let container = null;
@@ -40,10 +45,10 @@ afterEach(() => {
 
 it('renders w/o results', async () => {
     renderWithClient(<MovieList movieSearchData={{needle: "asdasd"}}/>, container)
-    expect(await screen.findByText(`No results to "asdasd"`)).toBeInTheDocument();
+    expect(await screen.findByText('No results to "asdasd"')).toBeInTheDocument();
 })
 
 it('renders w/ unrelated search', async () => {
     renderWithClient(<MovieList movieSearchData={{needle: "Pulp Fiction"}}/>, container)
-    expect(await screen.findByText(`Search results to "Pulp Fiction"`)).toBeInTheDocument();
+    expect(await screen.findByText('Search results to "Pulp Fiction"')).toBeInTheDocument();
 })
